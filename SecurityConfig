@@ -1,0 +1,37 @@
+package com.example.security;
+
+import com.example.security.jwt.JwtAuthenticationFilter;
+import com.example.security.jwt.JwtTokenProvider;
+import org.springframework.context.annotation.*;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.authentication.*;
+import org.springframework.security.ldap.authentication.ad.ActiveDirectoryLdapAuthenticationProvider;
+import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+
+@Configuration
+public class SecurityConfig {
+
+    @Bean
+    public SecurityFilterChain filterChain(HttpSecurity http, JwtTokenProvider tokenProvider) throws Exception {
+        http.csrf().disable()
+            .authorizeHttpRequests(auth -> auth
+                .requestMatchers("/api/auth/login").permitAll()
+                .anyRequest().authenticated()
+            )
+            .sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS);
+
+        http.addFilterBefore(new JwtAuthenticationFilter(tokenProvider),
+                             UsernamePasswordAuthenticationFilter.class);
+        return http.build();
+    }
+
+    @Bean
+    public AuthenticationManager authenticationManager() {
+        ActiveDirectoryLdapAuthenticationProvider provider =
+                new ActiveDirectoryLdapAuthenticationProvider("example.com", "ldap://localhost:389/");
+        provider.setConvertSubErrorCodesToExceptions(true);
+        return new ProviderManager(provider);
+    }
+}
